@@ -59,11 +59,22 @@ cd ..
 
 echo "Preparing Chromium Lambda Layer..."
 LAYER_DIR="./layer/nodejs"
-mkdir -p "$LAYER_DIR"
-cp layer/package.json "$LAYER_DIR/"
-cd "$LAYER_DIR"
-npm install --omit=dev --no-audit --no-fund
-cd ../..
+FORCE_LAYER=false
+for arg in "$@"; do
+  if [ "$arg" == "--force-layer" ]; then
+    FORCE_LAYER=true
+  fi
+done
+
+if [ -d "$LAYER_DIR/node_modules" ] && [ "$FORCE_LAYER" = false ]; then
+    echo "Skipping layer preparation (node_modules already exists). Use --force-layer to rebuild."
+else
+    mkdir -p "$LAYER_DIR"
+    cp layer/package.json "$LAYER_DIR/"
+    cd "$LAYER_DIR"
+    npm install --omit=dev --no-audit --no-fund
+    cd ../..
+fi
 
 echo "Packaging with CloudFormation (Uploading to S3)..."
 # Note: 'aws cloudformation package' handles the zipping of the directory automatically

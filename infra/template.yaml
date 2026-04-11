@@ -46,6 +46,12 @@ Resources:
       # This creates the IAM role with logging permissions automatically
       Policies:
         - AWSLambdaBasicExecutionRole
+      Events:
+        DailySchedule:
+          Type: Schedule
+          Properties:
+            Schedule: cron(0 8 * * ? *)
+            Input: !Sub '{"bankName": "${BankName}"}'
 
 Outputs:
   LambdaFunctionArn:

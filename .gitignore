@@ -5,6 +5,8 @@ node_modules/
 dist/
 .aws-sam/
 out/
+infra/packaged.yaml
+infra/packaged.yml
 
 # Environment variables and secrets
 .env

@@ -29,7 +29,7 @@ Resources:
       Runtime: nodejs20.x
       MemorySize: 1024
       Timeout: 120
-      CodeUri: s3://bank-scraper-deployments-390844784861/5c2d48bdef9ab1dde53167524f633b45
+      CodeUri: s3://bank-scraper-deployments-390844784861/797d584816bdd2441cc2aec905f4de7e
       Layers:
       - Ref: ChromiumLayer
       Environment:
@@ -42,6 +42,13 @@ Resources:
             Ref: DopplerConfig
       Policies:
       - AWSLambdaBasicExecutionRole
+      Events:
+        DailySchedule:
+          Type: Schedule
+          Properties:
+            Schedule: cron(0 8 * * ? *)
+            Input:
+              Fn::Sub: '{"bankName": "${BankName}"}'
 Outputs:
   LambdaFunctionArn:
     Description: ARN of the Scraper Lambda function
