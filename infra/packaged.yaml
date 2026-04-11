@@ -1,0 +1,54 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Description: SAM template for the Bank Expenditure Scraper
+Parameters:
+  BankName:
+    Type: String
+  BankUrl:
+    Type: String
+  BankUsername:
+    Type: String
+  BankPassword:
+    Type: String
+    NoEcho: true
+Resources:
+  ChromiumLayer:
+    Type: AWS::Serverless::LayerVersion
+    Properties:
+      LayerName: chromium-layer
+      Description: Layer containing @sparticuz/chromium
+      ContentUri: s3://bank-scraper-deployments-390844784861/7c0ce6a46c4c561570a18a8fc82b3fa7
+      CompatibleRuntimes:
+      - nodejs20.x
+    Metadata:
+      BuildMethod: nodejs
+  ScraperFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: bank-expends-scraper
+      Handler: index.handler
+      Runtime: nodejs20.x
+      MemorySize: 1024
+      Timeout: 120
+      CodeUri: s3://bank-scraper-deployments-390844784861/b3a7a0622706008a75931ce248903253
+      Layers:
+      - Ref: ChromiumLayer
+      Environment:
+        Variables:
+          BANK_NAME:
+            Ref: BankName
+          BANK_URL:
+            Ref: BankUrl
+          BANK_USERNAME:
+            Ref: BankUsername
+          BANK_PASSWORD:
+            Ref: BankPassword
+      Policies:
+      - AWSLambdaBasicExecutionRole
+Outputs:
+  LambdaFunctionArn:
+    Description: ARN of the Scraper Lambda function
+    Value:
+      Fn::GetAtt:
+      - ScraperFunction
+      - Arn

@@ -1,0 +1,8 @@
+{
+  "name": "chromium-layer",
+  "version": "1.0.0",
+  "description": "Lambda Layer for Chromium binary",
+  "dependencies": {
+    "@sparticuz/chromium": "^143.0.4"
+  }
+}

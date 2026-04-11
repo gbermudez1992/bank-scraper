@@ -1,0 +1,55 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Transform: "AWS::Serverless-2016-10-31"
+Description: "SAM template for the Bank Expenditure Scraper"
+
+Parameters:
+  BankName:
+    Type: String
+  DopplerToken:
+    Type: String
+    NoEcho: true
+  DopplerConfig:
+    Type: String
+    Default: "dev_aws"
+  # Credentials will be fetched from Doppler
+
+Resources:
+  ChromiumLayer:
+    Type: "AWS::Serverless::LayerVersion"
+    Properties:
+      LayerName: "chromium-layer"
+      Description: "Layer containing @sparticuz/chromium"
+      ContentUri: ../layer/
+      CompatibleRuntimes:
+        - nodejs20.x
+    Metadata:
+      # This tells SAM how to build the layer
+      BuildMethod: nodejs
+
+  ScraperFunction:
+    Type: "AWS::Serverless::Function"
+    Properties:
+      FunctionName: "bank-scraper"
+      Handler: "index.handler"
+      Runtime: "nodejs20.x"
+      MemorySize: 1024
+      Timeout: 120
+      CodeUri: ../dist/
+      Layers:
+        - !Ref ChromiumLayer
+      Environment:
+        Variables:
+          # Static defaults can remain here if needed, but credentials move to Doppler
+          BANK_NAME_DEFAULT: !Ref BankName
+          DOPPLER_TOKEN: !Ref DopplerToken
+          DOPPLER_CONFIG: !Ref DopplerConfig
+      # This creates the IAM role with logging permissions automatically
+      Policies:
+        - AWSLambdaBasicExecutionRole
+        - SESCrudPolicy:
+            Source: "notification@bankscrapper.com"
+
+Outputs:
+  LambdaFunctionArn:
+    Description: "ARN of the Scraper Lambda function"
+    Value: !GetAtt ScraperFunction.Arn
