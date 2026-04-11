@@ -46,8 +46,6 @@ Resources:
       # This creates the IAM role with logging permissions automatically
       Policies:
         - AWSLambdaBasicExecutionRole
-        - SESCrudPolicy:
-            Source: "notification@bankscrapper.com"
 
 Outputs:
   LambdaFunctionArn:

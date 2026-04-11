@@ -4,20 +4,19 @@ Description: SAM template for the Bank Expenditure Scraper
 Parameters:
   BankName:
     Type: String
-  BankUrl:
-    Type: String
-  BankUsername:
-    Type: String
-  BankPassword:
+  DopplerToken:
     Type: String
     NoEcho: true
+  DopplerConfig:
+    Type: String
+    Default: dev_aws
 Resources:
   ChromiumLayer:
     Type: AWS::Serverless::LayerVersion
     Properties:
       LayerName: chromium-layer
       Description: Layer containing @sparticuz/chromium
-      ContentUri: s3://bank-scraper-deployments-390844784861/7c0ce6a46c4c561570a18a8fc82b3fa7
+      ContentUri: s3://bank-scraper-deployments-390844784861/97ce217f73ea3dc7bbf059896d549e77
       CompatibleRuntimes:
       - nodejs20.x
     Metadata:
@@ -25,24 +24,22 @@ Resources:
   ScraperFunction:
     Type: AWS::Serverless::Function
     Properties:
-      FunctionName: bank-expends-scraper
+      FunctionName: bank-scraper
       Handler: index.handler
       Runtime: nodejs20.x
       MemorySize: 1024
       Timeout: 120
-      CodeUri: s3://bank-scraper-deployments-390844784861/b3a7a0622706008a75931ce248903253
+      CodeUri: s3://bank-scraper-deployments-390844784861/5c2d48bdef9ab1dde53167524f633b45
       Layers:
       - Ref: ChromiumLayer
       Environment:
         Variables:
-          BANK_NAME:
+          BANK_NAME_DEFAULT:
             Ref: BankName
-          BANK_URL:
-            Ref: BankUrl
-          BANK_USERNAME:
-            Ref: BankUsername
-          BANK_PASSWORD:
-            Ref: BankPassword
+          DOPPLER_TOKEN:
+            Ref: DopplerToken
+          DOPPLER_CONFIG:
+            Ref: DopplerConfig
       Policies:
       - AWSLambdaBasicExecutionRole
 Outputs:

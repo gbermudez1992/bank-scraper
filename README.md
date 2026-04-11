@@ -78,10 +78,15 @@ The project uses a **JSON-in-Config** structure in Doppler. Within your `dev` or
    The project includes a deployment script that handles bundling with `esbuild`, pulling dependencies, and packaging for CloudFormation.
    
 2. **Run the Deploy Script**:
+   You can run the script using the default `.env` file:
    ```bash
-   bash scripts/deploy.sh
+   npm run deploy
    ```
-   *Note: Ensure your `DOPPLER_TOKEN` is available in your environment or passed to the script to allow the Lambda to fetch secrets at runtime.*
+   Or specify a custom environment file (e.g., for production):
+   ```bash
+   npm run deploy -- .env.prod
+   ```
+   *Note: The script automatically parses `BANK_NAME`, `DOPPLER_TOKEN`, and `DOPPLER_CONFIG` from the specified env file to override CloudFormation template parameters.*
 
 3. **Lambda Trigger**:
    The Lambda function accepts a `bankName` parameter in its event object:

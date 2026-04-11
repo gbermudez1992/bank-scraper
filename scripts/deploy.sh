@@ -73,18 +73,21 @@ aws cloudformation package \
     --output-template-file "$PACKAGED_TEMPLATE" \
     --region "$REGION"
 
-echo "Parsing .env for parameter overrides..."
-if [ -f .env ]; then
-    # Grab values from .env. We use a simple grep/sed to pull key values.
-    B_NAME=$(grep '^BANK_NAME=' .env | cut -d '=' -f2)
-    B_URL=$(grep '^BANK_URL=' .env | cut -d '=' -f2)
-    B_USER=$(grep '^BANK_USERNAME=' .env | cut -d '=' -f2)
-    B_PASS=$(grep '^BANK_PASSWORD=' .env | cut -d '=' -f2)
-    S_EMAIL=$(grep '^SOURCE_EMAIL=' .env | cut -d '=' -f2)
-    D_EMAIL=$(grep '^DESTINATION_EMAIL=' .env | cut -d '=' -f2)
+ENV_FILE=${1:-.env}
+
+echo "Parsing $ENV_FILE for parameter overrides..."
+if [ -f "$ENV_FILE" ]; then
+    # Grab values from the specified env file.
+    B_NAME=$(grep '^BANK_NAME=' "$ENV_FILE" | cut -d '=' -f2 | tr -d '\r' | sed "s/^'//;s/'$//;s/^\"//;s/\"$//")
+    D_TOKEN=$(grep '^DOPPLER_TOKEN=' "$ENV_FILE" | cut -d '=' -f2 | tr -d '\r' | sed "s/^'//;s/'$//;s/^\"//;s/\"$//")
+    D_CONFIG=$(grep '^DOPPLER_CONFIG=' "$ENV_FILE" | cut -d '=' -f2 | tr -d '\r' | sed "s/^'//;s/'$//;s/^\"//;s/\"$//")
     
-    PARAM_OVERRIDES="BankName=$B_NAME BankUrl=$B_URL BankUsername=$B_USER BankPassword=$B_PASS SourceEmail=$S_EMAIL DestinationEmail=$D_EMAIL"
+    PARAM_OVERRIDES="BankName=$B_NAME DopplerToken=$D_TOKEN DopplerConfig=$D_CONFIG"
 else
+    if [ "$ENV_FILE" != ".env" ]; then
+        echo "Error: Environment file '$ENV_FILE' not found."
+        exit 1
+    fi
     echo "Warning: .env not found. Using template defaults."
     PARAM_OVERRIDES=""
 fi
