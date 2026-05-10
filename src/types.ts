@@ -15,7 +15,6 @@ export interface SummaryItem {
 }
 
 export interface MovementsSummary {
-  summary: SummaryItem[];
   rawMovements: Movement[];
 }
 

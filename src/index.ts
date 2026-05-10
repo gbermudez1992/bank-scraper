@@ -17,6 +17,21 @@ if (!isLambda) {
   dotenv.config({ path: path.resolve(process.cwd(), ".env") });
 }
 
+const formatAmount = (amount: string) => {
+  const numericAmount = parseFloat(amount.replace(/,/g, ""));
+  return Number.isFinite(numericAmount)
+    ? numericAmount.toFixed(2)
+    : amount.trim();
+};
+
+const escapeHtml = (value: string) =>
+  value
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
+
 async function sendEmailNotification(
   result: MovementsSummary,
   secrets: BankSecrets,
@@ -80,21 +95,6 @@ async function sendEmailNotification(
     rowsByCurrency[s.currency].transactionsCount++;
   });
 
-  const formatAmount = (amount: string) => {
-    const numericAmount = parseFloat(amount.replace(/,/g, ""));
-    return Number.isFinite(numericAmount)
-      ? numericAmount.toFixed(2)
-      : amount.trim();
-  };
-
-  const escapeHtml = (value: string) =>
-    value
-      .replace(/&/g, "&amp;")
-      .replace(/</g, "&lt;")
-      .replace(/>/g, "&gt;")
-      .replace(/"/g, "&quot;")
-      .replace(/'/g, "&#39;");
-
   const tablesByCurrency = Object.entries(rowsByCurrency)
     .map(([currency, { movements, totalAmount }]) => {
       const movementRows = movements
@@ -143,7 +143,6 @@ async function sendEmailNotification(
         <h2>Resumen de Gastos: ${bankName.toUpperCase()}</h2>
         <p>Consumo del día <strong>${formattedDate}</strong> para banco <strong>${bankName}</strong>:</p>
         ${tablesByCurrency}
-        <p style="margin: 20px 0 0 0;">--,--</p>
         <p style="margin-top: 20px; font-size: 0.9em; color: #666;">
           Este es un correo automático de tu Bank Scraper.
         </p>
@@ -229,9 +228,9 @@ export const handler: Handler = async (event, context) => {
     const result = await scraper.scrape(page);
 
     console.log("Extraction complete!");
-    console.table(result.summary);
+    console.table(result.rawMovements);
 
-    if (result.summary.length > 0) {
+    if (result.rawMovements.length > 0) {
       await sendEmailNotification(result, secrets, bankName);
     } else {
       console.log(

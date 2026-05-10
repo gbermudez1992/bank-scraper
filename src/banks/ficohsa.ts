@@ -155,44 +155,6 @@ export class FicohsaScraper implements BankScraper {
         .filter((m) => m.amount && m.currency);
     });
 
-    console.log("Summarizing transactions (filtering for Yesterday only)...");
-
-    // Calculate yesterday's date in DD/MM/YYYY format
-    const yesterday = new Date();
-    yesterday.setDate(yesterday.getDate() - 1);
-    const day = String(yesterday.getDate()).padStart(2, "0");
-    const month = String(yesterday.getMonth() + 1).padStart(2, "0");
-    const year = yesterday.getFullYear();
-    const yesterdayStr = `${day}/${month}/${year}`;
-
-    console.log(`Target date for summary: ${yesterdayStr}`);
-
-    const summaryMap: Record<string, SummaryItem> = {};
-    for (const m of movements) {
-      // Only summarize if the date matches yesterday
-      if (m.date === yesterdayStr) {
-        const key = `${m.date}_${m.currency}`;
-        if (!summaryMap[key]) {
-          summaryMap[key] = {
-            date: m.date,
-            currency: m.currency,
-            totalAmount: 0,
-            transactionCount: 0,
-          };
-        }
-        const numericAmount = parseFloat(m.amount.replace(/,/g, ""));
-        if (!isNaN(numericAmount)) {
-          summaryMap[key].totalAmount += numericAmount;
-          summaryMap[key].transactionCount += 1;
-        }
-      }
-    }
-
-    const summaryArray = Object.values(summaryMap).map((s) => ({
-      ...s,
-      totalAmount: parseFloat(s.totalAmount.toFixed(2)),
-    }));
-
     const logoutSelector = "icb-logout a";
     console.log("Logging out...");
     await page.click(logoutSelector);
@@ -213,7 +175,7 @@ export class FicohsaScraper implements BankScraper {
       );
     }
 
-    return { summary: summaryArray, rawMovements: movements };
+    return { rawMovements: movements };
   }
 
   private async clickVisibleButton(page: Page, selector: string) {
