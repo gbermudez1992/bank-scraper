@@ -4,6 +4,7 @@ import * as fs from "fs";
 import { ScraperFactory } from "./scraper-factory";
 import { Handler } from "aws-lambda";
 import { getBankSecrets, BankSecrets } from "./secrets";
+import { Movement, MovementsSummary } from "./types";
 
 // Local version uses puppeteer, Lambda version uses puppeteer-core + @sparticuz/chromium
 let puppeteer: any;
@@ -17,7 +18,7 @@ if (!isLambda) {
 }
 
 async function sendEmailNotification(
-  result: any,
+  result: MovementsSummary,
   secrets: BankSecrets,
   bankName: string,
 ) {
@@ -45,22 +46,95 @@ async function sendEmailNotification(
 
   const yesterday = new Date();
   yesterday.setDate(yesterday.getDate() - 1);
+  const day = String(yesterday.getDate()).padStart(2, "0");
+  const month = String(yesterday.getMonth() + 1).padStart(2, "0");
+  const year = yesterday.getFullYear();
+  const yesterdayStr = `${day}/${month}/${year}`;
   const formattedDate = yesterday.toLocaleDateString("es-HN", {
     day: "2-digit",
     month: "2-digit",
   });
 
-  const tableRows = result.summary
-    .map(
-      (s: any) => `
-    <tr>
-      <td style="border: 1px solid #ddd; padding: 8px;">${s.date}</td>
-      <td style="border: 1px solid #ddd; padding: 8px;">${s.currency}</td>
-      <td style="border: 1px solid #ddd; padding: 8px; text-align: right;">${s.totalAmount.toFixed(2)}</td>
-      <td style="border: 1px solid #ddd; padding: 8px; text-align: center;">${s.transactionCount}</td>
-    </tr>
-  `,
-    )
+  const rowsByCurrency: Record<
+    string,
+    { movements: Movement[]; totalAmount: number; transactionsCount: number }
+  > = {};
+
+  result.rawMovements.forEach((s) => {
+    if (s.date !== yesterdayStr) {
+      return;
+    }
+
+    if (!rowsByCurrency[s.currency]) {
+      rowsByCurrency[s.currency] = {
+        movements: [],
+        totalAmount: 0,
+        transactionsCount: 0,
+      };
+    }
+
+    rowsByCurrency[s.currency].movements.push(s);
+    rowsByCurrency[s.currency].totalAmount += parseFloat(
+      s.amount.replace(/,/g, ""),
+    );
+    rowsByCurrency[s.currency].transactionsCount++;
+  });
+
+  const formatAmount = (amount: string) => {
+    const numericAmount = parseFloat(amount.replace(/,/g, ""));
+    return Number.isFinite(numericAmount)
+      ? numericAmount.toFixed(2)
+      : amount.trim();
+  };
+
+  const escapeHtml = (value: string) =>
+    value
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;")
+      .replace(/"/g, "&quot;")
+      .replace(/'/g, "&#39;");
+
+  const tablesByCurrency = Object.entries(rowsByCurrency)
+    .map(([currency, { movements, totalAmount }]) => {
+      const movementRows = movements
+        .map(
+          (movement) => `
+            <tr>
+              <td style="border: 1px solid #ddd; padding: 8px;">${escapeHtml(movement.date)}</td>
+              <td style="border: 1px solid #ddd; padding: 8px;">${escapeHtml(movement.concept)}</td>
+              <td style="border: 1px solid #ddd; padding: 8px;">${escapeHtml(movement.currency)}</td>
+              <td style="border: 1px solid #ddd; padding: 8px; text-align: right;">${formatAmount(movement.amount)}</td>
+            </tr>
+          `,
+        )
+        .join("");
+
+      return `
+        <section style="margin-bottom: 24px;">
+          <h3 style="margin: 0 0 12px 0;">Moneda: ${escapeHtml(currency)}</h3>
+          <table style="border-collapse: collapse; width: 100%; max-width: 800px;">
+            <thead>
+              <tr style="background-color: #f2f2f2;">
+                <th style="border: 1px solid #ddd; padding: 8px; text-align: left;">Fecha</th>
+                <th style="border: 1px solid #ddd; padding: 8px; text-align: left;">Concepto</th>
+                <th style="border: 1px solid #ddd; padding: 8px; text-align: left;">Moneda</th>
+                <th style="border: 1px solid #ddd; padding: 8px; text-align: right;">Total</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${movementRows}
+            </tbody>
+            <tfoot>
+              <tr>
+                <td style="border: 1px solid #ddd; padding: 8px;" colspan="3">Total:</td>
+                <td style="border: 1px solid #ddd; padding: 8px; text-align: right;">${currency} ${totalAmount.toFixed(2)}</td>
+              </tr>
+            </tfoot>
+          </table>
+        </section>
+      `;
+    })
     .join("");
 
   const htmlBody = `
@@ -68,19 +142,8 @@ async function sendEmailNotification(
       <body style="font-family: Arial, sans-serif; color: #333;">
         <h2>Resumen de Gastos: ${bankName.toUpperCase()}</h2>
         <p>Consumo del día <strong>${formattedDate}</strong> para banco <strong>${bankName}</strong>:</p>
-        <table style="border-collapse: collapse; width: 100%; max-width: 600px;">
-          <thead>
-            <tr style="background-color: #f2f2f2;">
-              <th style="border: 1px solid #ddd; padding: 8px; text-align: left;">Fecha</th>
-              <th style="border: 1px solid #ddd; padding: 8px; text-align: left;">Moneda</th>
-              <th style="border: 1px solid #ddd; padding: 8px; text-align: right;">Total</th>
-              <th style="border: 1px solid #ddd; padding: 8px; text-align: center;">Transacciones</th>
-            </tr>
-          </thead>
-          <tbody>
-            ${tableRows}
-          </tbody>
-        </table>
+        ${tablesByCurrency}
+        <p style="margin: 20px 0 0 0;">--,--</p>
         <p style="margin-top: 20px; font-size: 0.9em; color: #666;">
           Este es un correo automático de tu Bank Scraper.
         </p>
